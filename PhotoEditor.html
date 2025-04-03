@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PhotoEditor - Editor de Fotos Online</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .dropzone {
+            border: 2px dashed #ccc;
+            transition: all 0.3s ease;
+        }
+        .dropzone.active {
+            border-color: #4f46e5;
+            background-color: #eef2ff;
+        }
+        .image-container {
+            max-height: 500px;
+            overflow: hidden;
+        }
+        .filter-control {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: #ddd;
+            outline: none;
+        }
+        .filter-control::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #4f46e5;
+            cursor: pointer;
+        }
+        canvas {
+            max-width: 100%;
+            max-height: 500px;
+            object-fit: contain;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-indigo-600 mb-2">PhotoEditor</h1>
+            <p class="text-gray-600">Edite suas fotos online de forma simples e rápida</p>
+        </header>
+
+        <div class="bg-white rounded-xl shadow-lg overflow-hidden max-w-4xl mx-auto">
+            <!-- Upload Section -->
+            <div id="upload-section" class="p-6">
+                <div id="dropzone" class="dropzone rounded-lg p-8 text-center cursor-pointer">
+                    <div class="flex flex-col items-center justify-center">
+                        <i class="fas fa-cloud-upload-alt text-5xl text-indigo-500 mb-4"></i>
+                        <h3 class="text-xl font-semibold text-gray-700">Arraste e solte sua foto aqui</h3>
+                        <p class="text-gray-500 mb-4">ou</p>
+                        <label for="file-input" class="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition cursor-pointer">
+                            Selecione do computador
+                        </label>
+                        <input id="file-input" type="file" accept="image/*" class="hidden">
+                    </div>
+                </div>
+                <p class="text-xs text-gray-500 mt-2 text-center">Formatos suportados: JPG, PNG, GIF (até 5MB)</p>
+            </div>
+
+            <!-- Editor Section (hidden by default) -->
+            <div id="editor-section" class="hidden">
+                <div class="flex flex-col md:flex-row">
+                    <!-- Image Preview -->
+                    <div class="md:w-2/3 p-4 border-r border-gray-200">
+                        <div class="image-container flex items-center justify-center bg-gray-100 rounded-lg p-4">
+                            <canvas id="image-canvas" class="shadow-sm"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Controls -->
+                    <div class="md:w-1/3 p-4">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-semibold">Ajustes</h3>
+                            <button id="reset-btn" class="text-indigo-600 hover:text-indigo-800">
+                                <i class="fas fa-redo-alt mr-1"></i> Redefinir
+                            </button>
+                        </div>
+
+                        <div class="space-y-4">
+                            <!-- Brightness -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Brilho</label>
+                                <input type="range" id="brightness" class="filter-control" min="-100" max="100" value="0">
+                                <div class="flex justify-between text-xs text-gray-500">
+                                    <span>-100</span>
+                                    <span>0</span>
+                                    <span>+100</span>
+                                </div>
+                            </div>
+
+                            <!-- Contrast -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Contraste</label>
+                                <input type="range" id="contrast" class="filter-control" min="-100" max="100" value="0">
+                                <div class="flex justify-between text-xs text-gray-500">
+                                    <span>-100</span>
+                                    <span>0</span>
+                                    <span>+100</span>
+                                </div>
+                            </div>
+
+                            <!-- Saturation -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Saturação</label>
+                                <input type="range" id="saturation" class="filter-control" min="-100" max="100" value="0">
+                                <div class="flex justify-between text-xs text-gray-500">
+                                    <span>-100</span>
+                                    <span>0</span>
+                                    <span>+100</span>
+                                </div>
+                            </div>
+
+                            <!-- Grayscale -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Escala de Cinza</label>
+                                <input type="range" id="grayscale" class="filter-control" min="0" max="100" value="0">
+                                <div class="flex justify-between text-xs text-gray-500">
+                                    <span>0%</span>
+                                    <span>50%</span>
+                                    <span>100%</span>
+                                </div>
+                            </div>
+
+                            <!-- Rotate -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Rotação</label>
+                                <div class="flex space-x-2">
+                                    <button id="rotate-left" class="bg-gray-200 hover:bg-gray-300 p-2 rounded">
+                                        <i class="fas fa-undo-alt"></i>
+                                    </button>
+                                    <button id="rotate-right" class="bg-gray-200 hover:bg-gray-300 p-2 rounded">
+                                        <i class="fas fa-redo-alt"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Flip -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Espelhar</label>
+                                <div class="flex space-x-2">
+                                    <button id="flip-horizontal" class="bg-gray-200 hover:bg-gray-300 px-3 py-2 rounded">
+                                        <i class="fas fa-arrows-alt-h mr-1"></i> Horizontal
+                                    </button>
+                                    <button id="flip-vertical" class="bg-gray-200 hover:bg-gray-300 px-3 py-2 rounded">
+                                        <i class="fas fa-arrows-alt-v mr-1"></i> Vertical
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Download Section -->
+                        <div class="mt-8 pt-4 border-t border-gray-200">
+                            <h3 class="text-lg font-semibold mb-3">Exportar</h3>
+                            <div class="flex flex-col space-y-2">
+                                <select id="format-select" class="border border-gray-300 rounded p-2">
+                                    <option value="png">PNG</option>
+                                    <option value="jpeg">JPEG</option>
+                                    <option value="webp">WebP</option>
+                                </select>
+                                <button id="download-btn" class="bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition flex items-center justify-center">
+                                    <i class="fas fa-download mr-2"></i> Baixar Imagem
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer class="text-center mt-12 text-gray-500 text-sm">
+            <p>© 2025 PhotoEditor - Todos os direitos reservados</p>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // DOM Elements
+            const fileInput = document.getElementById('file-input');
+            const dropzone = document.getElementById('dropzone');
+            const uploadSection = document.getElementById('upload-section');
+            const editorSection = document.getElementById('editor-section');
+            const canvas = document.getElementById('image-canvas');
+            const ctx = canvas.getContext('2d');
+            const brightnessControl = document.getElementById('brightness');
+            const contrastControl = document.getElementById('contrast');
+            const saturationControl = document.getElementById('saturation');
+            const grayscaleControl = document.getElementById('grayscale');
+            const rotateLeftBtn = document.getElementById('rotate-left');
+            const rotateRightBtn = document.getElementById('rotate-right');
+            const flipHorizontalBtn = document.getElementById('flip-horizontal');
+            const flipVerticalBtn = document.getElementById('flip-vertical');
+            const resetBtn = document.getElementById('reset-btn');
+            const downloadBtn = document.getElementById('download-btn');
+            const formatSelect = document.getElementById('format-select');
+            
+            // State variables
+            let originalImage = null;
+            let currentImage = null;
+            let rotation = 0;
+            let flipHorizontal = false;
+            let flipVertical = false;
+            let filters = {
+                brightness: 0,
+                contrast: 0,
+                saturation: 0,
+                grayscale: 0
+            };
+
+            // Event Listeners
+            fileInput.addEventListener('change', handleFileSelect);
+            dropzone.addEventListener('dragover', handleDragOver);
+            dropzone.addEventListener('dragleave', handleDragLeave);
+            dropzone.addEventListener('drop', handleDrop);
+            
+            brightnessControl.addEventListener('input', updateFilters);
+            contrastControl.addEventListener('input', updateFilters);
+            saturationControl.addEventListener('input', updateFilters);
+            grayscaleControl.addEventListener('input', updateFilters);
+            
+            rotateLeftBtn.addEventListener('click', () => rotateImage(-90));
+            rotateRightBtn.addEventListener('click', () => rotateImage(90));
+            flipHorizontalBtn.addEventListener('click', () => flipImage('horizontal'));
+            flipVerticalBtn.addEventListener('click', () => flipImage('vertical'));
+            resetBtn.addEventListener('click', resetImage);
+            downloadBtn.addEventListener('click', downloadImage);
+
+            // Functions
+            function handleFileSelect(e) {
+                const file = e.target.files[0];
+                if (file && file.type.match('image.*')) {
+                    processImage(file);
+                }
+            }
+
+            function handleDragOver(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                dropzone.classList.add('active');
+            }
+
+            function handleDragLeave(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                dropzone.classList.remove('active');
+            }
+
+            function handleDrop(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                dropzone.classList.remove('active');
+                
+                const file = e.dataTransfer.files[0];
+                if (file && file.type.match('image.*')) {
+                    processImage(file);
+                }
+            }
+
+            function processImage(file) {
+                const reader = new FileReader();
+                
+                reader.onload = function(event) {
+                    const img = new Image();
+                    img.onload = function() {
+                        originalImage = img;
+                        currentImage = img;
+                        
+                        // Show editor section
+                        uploadSection.classList.add('hidden');
+                        editorSection.classList.remove('hidden');
+                        
+                        // Draw image
+                        drawImage();
+                    };
+                    img.src = event.target.result;
+                };
+                
+                reader.readAsDataURL(file);
+            }
+
+            function drawImage() {
+                if (!currentImage) return;
+                
+                // Clear canvas
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // Set canvas dimensions
+                let width = currentImage.width;
+                let height = currentImage.height;
+                
+                // Adjust for rotation
+                if (rotation === 90 || rotation === 270) {
+                    [width, height] = [height, width];
+                }
+                
+                canvas.width = width;
+                canvas.height = height;
+                
+                // Save context
+                ctx.save();
+                
+                // Apply flip transformations
+                ctx.translate(width / 2, height / 2);
+                if (flipHorizontal) ctx.scale(-1, 1);
+                if (flipVertical) ctx.scale(1, -1);
+                ctx.translate(-width / 2, -height / 2);
+                
+                // Apply rotation
+                ctx.translate(width / 2, height / 2);
+                ctx.rotate(rotation * Math.PI / 180);
+                ctx.translate(-currentImage.width / 2, -currentImage.height / 2);
+                
+                // Draw image
+                ctx.drawImage(currentImage, 0, 0);
+                
+                // Apply filters
+                applyFilters();
+                
+                // Restore context
+                ctx.restore();
+            }
+
+            function applyFilters() {
+                if (!currentImage) return;
+                
+                const brightness = filters.brightness / 100;
+                const contrast = (filters.contrast + 100) / 100;
+                const saturation = (filters.saturation + 100) / 100;
+                const grayscale = filters.grayscale / 100;
+                
+                // Get image data
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imageData.data;
+                
+                // Apply filters to each pixel
+                for (let i = 0; i < data.length; i += 4) {
+                    // Get RGB values
+                    let r = data[i];
+                    let g = data[i + 1];
+                    let b = data[i + 2];
+                    
+                    // Apply brightness
+                    if (brightness !== 0) {
+                        r += 255 * brightness;
+                        g += 255 * brightness;
+                        b += 255 * brightness;
+                    }
+                    
+                    // Apply contrast
+                    if (contrast !== 1) {
+                        r = ((r - 128) * contrast) + 128;
+                        g = ((g - 128) * contrast) + 128;
+                        b = ((b - 128) * contrast) + 128;
+                    }
+                    
+                    // Apply saturation
+                    if (saturation !== 1) {
+                        const gray = 0.2989 * r + 0.5870 * g + 0.1140 * b;
+                        r = gray + saturation * (r - gray);
+                        g = gray + saturation * (g - gray);
+                        b = gray + saturation * (b - gray);
+                    }
+                    
+                    // Apply grayscale
+                    if (grayscale > 0) {
+                        const gray = 0.2989 * r + 0.5870 * g + 0.1140 * b;
+                        r = r + (gray - r) * grayscale;
+                        g = g + (gray - g) * grayscale;
+                        b = b + (gray - b) * grayscale;
+                    }
+                    
+                    // Clamp values between 0-255
+                    data[i] = Math.max(0, Math.min(255, r));
+                    data[i + 1] = Math.max(0, Math.min(255, g));
+                    data[i + 2] = Math.max(0, Math.min(255, b));
+                }
+                
+                // Put modified data back
+                ctx.putImageData(imageData, 0, 0);
+            }
+
+            function updateFilters() {
+                filters = {
+                    brightness: parseInt(brightnessControl.value),
+                    contrast: parseInt(contrastControl.value),
+                    saturation: parseInt(saturationControl.value),
+                    grayscale: parseInt(grayscaleControl.value)
+                };
+                drawImage();
+            }
+
+            function rotateImage(degrees) {
+                rotation = (rotation + degrees) % 360;
+                if (rotation < 0) rotation += 360;
+                drawImage();
+            }
+
+            function flipImage(direction) {
+                if (direction === 'horizontal') {
+                    flipHorizontal = !flipHorizontal;
+                } else {
+                    flipVertical = !flipVertical;
+                }
+                drawImage();
+            }
+
+            function resetImage() {
+                if (!originalImage) return;
+                
+                currentImage = originalImage;
+                rotation = 0;
+                flipHorizontal = false;
+                flipVertical = false;
+                
+                // Reset filter controls
+                brightnessControl.value = 0;
+                contrastControl.value = 0;
+                saturationControl.value = 0;
+                grayscaleControl.value = 0;
+                
+                filters = {
+                    brightness: 0,
+                    contrast: 0,
+                    saturation: 0,
+                    grayscale: 0
+                };
+                
+                drawImage();
+            }
+
+            function downloadImage() {
+                if (!currentImage) return;
+                
+                const format = formatSelect.value;
+                const mimeType = `image/${format}`;
+                
+                // Create a temporary canvas to apply all transformations
+                const tempCanvas = document.createElement('canvas');
+                const tempCtx = tempCanvas.getContext('2d');
+                
+                // Set dimensions
+                let width = currentImage.width;
+                let height = currentImage.height;
+                
+                if (rotation === 90 || rotation === 270) {
+                    [width, height] = [height, width];
+                }
+                
+                tempCanvas.width = width;
+                tempCanvas.height = height;
+                
+                // Apply transformations
+                tempCtx.save();
+                
+                // Flip
+                tempCtx.translate(width / 2, height / 2);
+                if (flipHorizontal) tempCtx.scale(-1, 1);
+                if (flipVertical) tempCtx.scale(1, -1);
+                tempCtx.translate(-width / 2, -height / 2);
+                
+                // Rotate
+                tempCtx.translate(width / 2, height / 2);
+                tempCtx.rotate(rotation * Math.PI / 180);
+                tempCtx.translate(-currentImage.width / 2, -currentImage.height / 2);
+                
+                // Draw image
+                tempCtx.drawImage(currentImage, 0, 0);
+                
+                // Apply filters
+                const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+                const data = imageData.data;
+                
+                const brightness = filters.brightness / 100;
+                const contrast = (filters.contrast + 100) / 100;
+                const saturation = (filters.saturation + 100) / 100;
+                const grayscale = filters.grayscale / 100;
+                
+                for (let i = 0; i < data.length; i += 4) {
+                    let r = data[i];
+                    let g = data[i + 1];
+                    let b = data[i + 2];
+                    
+                    if (brightness !== 0) {
+                        r += 255 * brightness;
+                        g += 255 * brightness;
+                        b += 255 * brightness;
+                    }
+                    
+                    if (contrast !== 1) {
+                        r = ((r - 128) * contrast) + 128;
+                        g = ((g - 128) * contrast) + 128;
+                        b = ((b - 128) * contrast) + 128;
+                    }
+                    
+                    if (saturation !== 1) {
+                        const gray = 0.2989 * r + 0.5870 * g + 0.1140 * b;
+                        r = gray + saturation * (r - gray);
+                        g = gray + saturation * (g - gray);
+                        b = gray + saturation * (b - gray);
+                    }
+                    
+                    if (grayscale > 0) {
+                        const gray = 0.2989 * r + 0.5870 * g + 0.1140 * b;
+                        r = r + (gray - r) * grayscale;
+                        g = g + (gray - g) * grayscale;
+                        b = b + (gray - b) * grayscale;
+                    }
+                    
+                    data[i] = Math.max(0, Math.min(255, r));
+                    data[i + 1] = Math.max(0, Math.min(255, g));
+                    data[i + 2] = Math.max(0, Math.min(255, b));
+                }
+                
+                tempCtx.putImageData(imageData, 0, 0);
+                tempCtx.restore();
+                
+                // Create download link
+                const link = document.createElement('a');
+                link.download = `edited-image.${format}`;
+                link.href = tempCanvas.toDataURL(mimeType);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        });
+    </script>
+</body>
+</html>
